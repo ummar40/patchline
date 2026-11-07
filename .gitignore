@@ -1,0 +1,17 @@
+node_modules/
+.next/
+dist/
+coverage/
+next-env.d.ts
+*.tsbuildinfo
+
+src/db/generated/
+
+.env
+.env.*
+!.env.example
+
+*.pem
+*.log
+.DS_Store
+Thumbs.db

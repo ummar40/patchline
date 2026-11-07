@@ -1,0 +1,398 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/db/generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AuthProvider {
+  GITHUB
+}
+
+enum InstallationAccountType {
+  USER
+  ORGANIZATION
+}
+
+enum RepositorySelection {
+  ALL
+  SELECTED
+}
+
+enum JobStatus {
+  QUEUED
+  PREPARING
+  CLONING
+  ANALYZING
+  REPRODUCING
+  PLANNING
+  IMPLEMENTING
+  VERIFYING
+  REVIEWING
+  CREATING_PR
+  COMPLETED
+  FAILED
+  NEEDS_HUMAN
+  CANCELLED
+}
+
+enum JobErrorCategory {
+  CONFIGURATION
+  GITHUB_ACCESS
+  CLONE_FAILED
+  SANDBOX
+  DEPENDENCY_INSTALL
+  UNSUPPORTED_REPOSITORY
+  MODEL_PROVIDER
+  MODEL_BEHAVIOR
+  LIMIT_EXCEEDED
+  NO_VERIFICATION
+  VERIFICATION_FAILED
+  REVIEW_REJECTED
+  POLICY_VIOLATION
+  AGENT_ESCALATION
+  PUBLISH_FAILED
+  WORKER_INTERRUPTED
+  INTERNAL
+}
+
+enum JobEventType {
+  JOB_CREATED
+  STATE_CHANGED
+  CANCEL_REQUESTED
+  OPERATION
+  COMMAND
+  MODEL_CALL
+  TOOL_CALL
+  VERIFICATION
+  DECISION
+  LIMIT
+  ERROR
+}
+
+enum EventLevel {
+  INFO
+  WARN
+  ERROR
+}
+
+enum ArtifactKind {
+  DETECTION
+  ANALYSIS
+  REPRODUCTION
+  PLAN
+  IMPLEMENTATION
+  REVIEW
+  DIFF
+}
+
+enum CommandSource {
+  SYSTEM
+  AGENT
+  VERIFICATION
+}
+
+enum VerificationStage {
+  BASELINE
+  CANDIDATE
+}
+
+enum VerificationCategory {
+  TEST
+  LINT
+  TYPECHECK
+  BUILD
+}
+
+enum VerificationStatus {
+  PASSED
+  FAILED
+  TIMED_OUT
+  ERRORED
+}
+
+enum ModelInvocationStatus {
+  SUCCEEDED
+  FAILED
+}
+
+model User {
+  id        String   @id @default(cuid(2))
+  name      String?
+  email     String?
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  identities         AuthIdentity[]
+  sessions           Session[]
+  installationAccess InstallationAccess[]
+  repositoryAccess   RepositoryAccess[]
+  createdJobs        MaintenanceJob[]     @relation("JobCreator")
+  cancelledJobs      MaintenanceJob[]     @relation("JobCanceller")
+}
+
+model AuthIdentity {
+  id                String       @id @default(cuid(2))
+  userId            String
+  provider          AuthProvider
+  providerAccountId String
+  login             String
+  lastSignInAt      DateTime     @default(now())
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id         String   @id @default(cuid(2))
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model GitHubInstallation {
+  id                   String                  @id @default(cuid(2))
+  githubInstallationId BigInt                  @unique
+  accountGithubId      BigInt
+  accountLogin         String
+  accountType          InstallationAccountType
+  accountAvatarUrl     String?
+  repositorySelection  RepositorySelection
+  suspendedAt          DateTime?
+  uninstalledAt        DateTime?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  repositories Repository[]
+  access       InstallationAccess[]
+}
+
+model InstallationAccess {
+  userId         String
+  installationId String
+  verifiedAt     DateTime
+  createdAt      DateTime @default(now())
+
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  installation GitHubInstallation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+
+  @@id([userId, installationId])
+  @@index([installationId])
+}
+
+model Repository {
+  id             String    @id @default(cuid(2))
+  installationId String
+  githubRepoId   BigInt    @unique
+  ownerLogin     String
+  name           String
+  fullName       String
+  isPrivate      Boolean
+  isArchived     Boolean   @default(false)
+  defaultBranch  String
+  removedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  installation GitHubInstallation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  access       RepositoryAccess[]
+  jobs         MaintenanceJob[]
+
+  @@index([installationId])
+  @@index([fullName])
+}
+
+model RepositoryAccess {
+  userId       String
+  repositoryId String
+  canPush      Boolean  @default(false)
+  verifiedAt   DateTime
+  createdAt    DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repository Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@id([userId, repositoryId])
+  @@index([repositoryId])
+}
+
+model MaintenanceJob {
+  id                  String            @id @default(cuid(2))
+  repositoryId        String
+  createdById         String
+  retryOfJobId        String?
+  title               String
+  problemDescription  String
+  reproductionSteps   String?
+  expectedBehavior    String?
+  status              JobStatus         @default(QUEUED)
+  errorCategory       JobErrorCategory?
+  outcomeSummary      String?
+  baseBranch          String
+  baseCommitSha       String?
+  workBranch          String?
+  repairIterations    Int               @default(0)
+  modelTurns          Int               @default(0)
+  inputTokens         Int               @default(0)
+  cachedInputTokens   Int               @default(0)
+  outputTokens        Int               @default(0)
+  reasoningTokens     Int               @default(0)
+  estimatedCostUsd    Decimal?          @db.Decimal(12, 6)
+  cancelRequestedAt   DateTime?
+  cancelRequestedById String?
+  startedAt           DateTime?
+  finishedAt          DateTime?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  repository        Repository         @relation(fields: [repositoryId], references: [id], onDelete: Restrict)
+  createdBy         User               @relation("JobCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  cancelRequestedBy User?              @relation("JobCanceller", fields: [cancelRequestedById], references: [id], onDelete: SetNull)
+  retryOf           MaintenanceJob?    @relation("JobRetry", fields: [retryOfJobId], references: [id], onDelete: SetNull)
+  retries           MaintenanceJob[]   @relation("JobRetry")
+  events            JobEvent[]
+  artifacts         JobArtifact[]
+  commands          CommandExecution[]
+  verificationRuns  VerificationRun[]
+  modelInvocations  ModelInvocation[]
+  pullRequest       PullRequestResult?
+
+  @@index([repositoryId, createdAt(sort: Desc)])
+  @@index([createdById, createdAt(sort: Desc)])
+  @@index([status, createdAt])
+}
+
+model JobEvent {
+  id         BigInt       @id @default(autoincrement())
+  jobId      String
+  type       JobEventType
+  level      EventLevel   @default(INFO)
+  message    String
+  fromStatus JobStatus?
+  toStatus   JobStatus?
+  data       Json?
+  createdAt  DateTime     @default(now())
+
+  job MaintenanceJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, id])
+}
+
+model JobArtifact {
+  id          String       @id @default(cuid(2))
+  jobId       String
+  kind        ArtifactKind
+  name        String
+  contentType String
+  content     String
+  sizeBytes   Int
+  sha256      String
+  createdAt   DateTime     @default(now())
+
+  job MaintenanceJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, kind, createdAt])
+}
+
+model CommandExecution {
+  id              String        @id @default(cuid(2))
+  jobId           String
+  source          CommandSource
+  phase           JobStatus
+  command         String
+  purpose         String?
+  networkEnabled  Boolean       @default(false)
+  exitCode        Int?
+  timedOut        Boolean       @default(false)
+  durationMs      Int
+  output          String
+  outputTruncated Boolean       @default(false)
+  startedAt       DateTime
+  finishedAt      DateTime
+
+  job             MaintenanceJob   @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  verificationRun VerificationRun?
+
+  @@index([jobId, startedAt])
+}
+
+model VerificationRun {
+  id                 String               @id @default(cuid(2))
+  jobId              String
+  commandExecutionId String?              @unique
+  stage              VerificationStage
+  iteration          Int
+  category           VerificationCategory
+  command            String
+  status             VerificationStatus
+  exitCode           Int?
+  durationMs         Int
+  startedAt          DateTime
+  finishedAt         DateTime
+
+  job              MaintenanceJob    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  commandExecution CommandExecution? @relation(fields: [commandExecutionId], references: [id], onDelete: SetNull)
+
+  @@index([jobId, stage, iteration])
+}
+
+model ModelInvocation {
+  id                String                @id @default(cuid(2))
+  jobId             String
+  phase             JobStatus
+  model             String
+  reasoningEffort   String
+  responseId        String?
+  status            ModelInvocationStatus
+  errorCategory     String?
+  retryCount        Int                   @default(0)
+  durationMs        Int
+  inputTokens       Int                   @default(0)
+  cachedInputTokens Int                   @default(0)
+  outputTokens      Int                   @default(0)
+  reasoningTokens   Int                   @default(0)
+  estimatedCostUsd  Decimal?              @db.Decimal(12, 6)
+  createdAt         DateTime              @default(now())
+
+  job MaintenanceJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, createdAt])
+}
+
+model PullRequestResult {
+  id         String   @id @default(cuid(2))
+  jobId      String   @unique
+  number     Int
+  url        String
+  title      String
+  headBranch String
+  baseBranch String
+  headSha    String
+  createdAt  DateTime @default(now())
+
+  job MaintenanceJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+}
+
+model WebhookDelivery {
+  id             String   @id
+  event          String
+  action         String?
+  installationId BigInt?
+  receivedAt     DateTime @default(now())
+
+  @@index([receivedAt])
+}

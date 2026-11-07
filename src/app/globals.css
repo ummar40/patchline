@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --surface: #fafafa;
+  --subtle: #f4f4f5;
+  --foreground: #18181b;
+  --muted: #6b6b76;
+  --border: #e4e4e7;
+  --border-strong: #d1d1d6;
+  --primary: #18181b;
+  --primary-foreground: #fafafa;
+  --ring: #2563eb;
+  --success: #166534;
+  --success-subtle: #f0fdf4;
+  --warning: #92400e;
+  --warning-subtle: #fffbeb;
+  --danger: #b42318;
+  --danger-subtle: #fef3f2;
+  --info: #1d4ed8;
+  --info-subtle: #eff6ff;
+  --diff-add: #e6ffec;
+  --diff-remove: #ffebe9;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0e0e10;
+    --surface: #151518;
+    --subtle: #1d1d21;
+    --foreground: #ededf0;
+    --muted: #9a9aa6;
+    --border: #27272c;
+    --border-strong: #3a3a41;
+    --primary: #ededf0;
+    --primary-foreground: #121214;
+    --ring: #60a5fa;
+    --success: #4ade80;
+    --success-subtle: #0f2417;
+    --warning: #fbbf24;
+    --warning-subtle: #2a2008;
+    --danger: #f97066;
+    --danger-subtle: #2c1210;
+    --info: #7cb3ff;
+    --info-subtle: #0f1d33;
+    --diff-add: #12261a;
+    --diff-remove: #2d1614;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-subtle: var(--subtle);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-success-subtle: var(--success-subtle);
+  --color-warning: var(--warning);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-danger: var(--danger);
+  --color-danger-subtle: var(--danger-subtle);
+  --color-info: var(--info);
+  --color-info-subtle: var(--info-subtle);
+  --color-diff-add: var(--diff-add);
+  --color-diff-remove: var(--diff-remove);
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+@layer base {
+  html {
+    color-scheme: light dark;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

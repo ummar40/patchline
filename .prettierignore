@@ -1,0 +1,10 @@
+node_modules
+.next
+dist
+coverage
+package-lock.json
+next-env.d.ts
+src/db/generated
+prisma/migrations
+test/fixtures
+prompt.md

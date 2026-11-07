@@ -1,0 +1,9 @@
+{
+  "name": "buggy-cart",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A small shopping cart library.",
+  "scripts": {
+    "test": "node --test"
+  }
+}
