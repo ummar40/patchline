@@ -1,5 +1,8 @@
 # Patchline
 
+[![CI](https://github.com/ummar40/patchline/actions/workflows/ci.yml/badge.svg)](https://github.com/ummar40/patchline/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 From software issue to verified pull request.
 
 Connect a GitHub repository, describe a problem, and get a pull request whose tests, lint, type
@@ -11,6 +14,36 @@ stops and says why instead of opening a pull request.
 - GitHub App setup: [docs/github-app-setup.md](docs/github-app-setup.md)
 - Live end-to-end runbook: [docs/e2e-runbook.md](docs/e2e-runbook.md)
 - Status of each build phase: [docs/implementation-plan.md](docs/implementation-plan.md)
+
+## Status and roadmap
+
+Patchline is an early-stage project (version 0.1.0). This is what has and has not been proven.
+
+**Working and tested**
+
+- The full quality gate (`npm run verify`) passes on a clean install and runs in CI.
+- The whole job pipeline runs end to end against a controlled repository with a deliberate
+  defect: clone, analysis, reproduction, implementation, baseline and post-change verification,
+  independent diff review, and an isolated push. It uses the real Docker sandbox, PostgreSQL,
+  Redis and a local git remote that enforces credentials. The model is a scripted stand-in.
+- Sandbox isolation, job state transitions, access control, webhook signatures, log redaction and
+  the command and path policies each have their own tests.
+
+**Implemented, not yet run against the real service**
+
+- GitHub App sign-in, installation tokens, the live write-access check and pull request creation.
+- The OpenAI model provider.
+- Signal-driven graceful shutdown (not testable on the Windows development host).
+- Python repository support (only the Node.js path is covered end to end).
+
+**Roadmap**
+
+1. Run the live end-to-end scenario in docs/e2e-runbook.md and record the result.
+2. Evaluate the agent on a set of known bugs and report pass rate and cost per job.
+3. Support more ecosystems and test runners, and more model providers.
+4. Add rate limiting and a retention policy for stored job data.
+
+Known security limitations are listed in [docs/security.md](docs/security.md).
 
 ## Requirements
 
